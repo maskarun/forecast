@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fund Finder</title>
+    <style>
+      :root { --ink:#172033; --muted:#667085; --line:#e5e9f0; --blue:#2563eb; --blue-pale:#eff6ff; --card:#fff; }
+      * { box-sizing:border-box; }
+      .visually-hidden { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+      body { margin:0; min-width:320px; color:var(--ink); font:15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:#f6f8fc; }
+      .shell { max-width:1180px; margin:0 auto; padding:40px 24px 64px; }
+      header { display:flex; justify-content:space-between; gap:24px; align-items:start; margin-bottom:32px; }
+      h1 { margin:0; font-size:clamp(2rem, 4vw, 3rem); letter-spacing:-.045em; line-height:1.05; }
+      .lede { max-width:650px; margin:12px 0 0; color:var(--muted); }
+      .source { color:var(--muted); font-size:.83rem; white-space:nowrap; }
+      .source a { color:var(--blue); text-decoration:none; }
+      .controls { padding:20px; background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 7px 24px rgb(20 35 65 / .04); }
+      .search { width:100%; border:1px solid #cbd5e1; border-radius:10px; padding:12px 14px; font:inherit; outline:none; }
+      .search:focus { border-color:var(--blue); box-shadow:0 0 0 3px #dbeafe; }
+      .filter-row { display:flex; flex-wrap:wrap; gap:18px 32px; align-items:end; margin-top:16px; }
+      fieldset { margin:0; padding:0; min-width:0; border:0; }
+      legend { margin-bottom:7px; color:var(--muted); font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }
+      .buttons { display:flex; flex-wrap:wrap; gap:7px; }
+      button { border:1px solid #d9e0ea; border-radius:999px; padding:7px 11px; color:#475467; background:white; font:inherit; font-size:.9rem; cursor:pointer; }
+      button[aria-pressed="true"] { color:#1d4ed8; background:var(--blue-pale); border-color:#93c5fd; font-weight:650; }
+      select { min-width:245px; border:1px solid #cbd5e1; border-radius:9px; padding:8px 10px; color:#344054; background:white; font:inherit; }
+      .results-head { display:flex; justify-content:space-between; gap:12px; align-items:center; margin:30px 0 12px; }
+      #count { margin:0; font-size:.92rem; color:var(--muted); }
+      #status { margin:0; color:var(--muted); font-size:.9rem; }
+      .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:14px; background:var(--card); }
+      table { width:100%; border-collapse:collapse; min-width:650px; }
+      th, td { padding:14px 18px; text-align:left; border-bottom:1px solid var(--line); }
+      th { color:var(--muted); background:#fbfcfe; font-size:.73rem; letter-spacing:.07em; text-transform:uppercase; }
+      tbody tr:last-child td { border-bottom:0; }
+      tbody tr:hover { background:#fafcff; }
+      .code { color:var(--muted); font-variant-numeric:tabular-nums; }
+      .tags { display:flex; flex-wrap:wrap; gap:6px; }
+      .tag { display:inline-block; border-radius:999px; padding:2px 8px; background:#f1f5f9; color:#475467; font-size:.78rem; font-weight:600; }
+      .tag.matched { color:#166534; background:#dcfce7; }
+      .scheme-button { padding:0; color:var(--ink); border:0; border-radius:0; background:transparent; font-size:inherit; font-weight:650; text-align:left; cursor:pointer; }
+      .scheme-button:hover { color:var(--blue); text-decoration:underline; }
+      .empty { padding:48px 20px; text-align:center; color:var(--muted); }
+      .load-more { display:block; margin:20px auto 0; border-radius:9px; color:#1d4ed8; border-color:#bfdbfe; }
+      .retry { margin-left:8px; color:#1d4ed8; border-color:#bfdbfe; }
+      .nav-panel { width:min(860px, calc(100vw - 28px)); max-height:calc(100vh - 40px); margin:auto; padding:22px; overflow:auto; border:1px solid #bfdbfe; border-radius:16px; background:#fff; box-shadow:0 20px 50px rgb(20 35 65 / .22); }
+      .nav-panel::backdrop { background:rgb(15 23 42 / .52); backdrop-filter:blur(2px); }
+      .nav-top { display:flex; justify-content:space-between; gap:18px; align-items:start; }
+      .nav-title { margin:0; font-size:1.2rem; line-height:1.25; }
+      .nav-meta { margin:5px 0 0; color:var(--muted); font-size:.88rem; }
+      .close { padding:3px 9px; }
+      .latest { margin:18px 0; padding:16px; border-radius:12px; color:#1e3a8a; background:var(--blue-pale); }
+      .latest strong { display:block; color:var(--ink); font-size:1.7rem; letter-spacing:-.03em; }
+      .nav-note { margin:14px 0 0; color:var(--muted); font-size:.82rem; }
+      .alpha-card { margin-top:20px; padding:18px; border:1px solid #dbeafe; border-radius:12px; background:#f8fbff; }
+      .alpha-card h3 { margin:0; font-size:1rem; }
+      .alpha-grid { display:grid; grid-template-columns:repeat(4, minmax(120px, 1fr)); gap:12px; margin-top:14px; }
+      .alpha-grid label { display:grid; gap:5px; color:var(--muted); font-size:.79rem; font-weight:650; }
+      .alpha-grid input, .alpha-grid select { width:100%; min-width:0; padding:8px; }
+      .alpha-result { margin:14px 0 0; color:#155e75; font-weight:650; }
+      @media (max-width:680px) { .alpha-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+      @media (max-width:680px) { .shell { padding:28px 16px 44px; } header { display:block; } .source { margin-top:16px; } }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <div>
+          <h1>Find an Indian mutual fund</h1>
+          <p class="lede">Browse schemes and use the name-derived classifications to narrow down active, passive, regular, and growth funds.</p>
+        </div>
+        <div class="source">Data: <a href="https://api.mfapi.in/mf" target="_blank" rel="noreferrer">MF API</a></div>
+      </header>
+
+      <section class="controls" aria-label="Fund filters">
+        <label><span class="visually-hidden">Search funds</span><input id="search" class="search" type="search" placeholder="Search by scheme name or code…" autocomplete="off" /></label>
+        <div class="filter-row">
+          <fieldset><legend>Investment style</legend><div class="buttons" id="style-filters">
+            <button type="button" data-filter="style" data-value="all" aria-pressed="true">All</button>
+            <button type="button" data-filter="style" data-value="active" aria-pressed="false">Active</button>
+            <button type="button" data-filter="style" data-value="passive" aria-pressed="false">Passive</button>
+          </div></fieldset>
+          <fieldset><legend>Plan / option</legend><div class="buttons" id="plan-filters">
+            <button type="button" data-filter="plan" data-value="all" aria-pressed="true">All</button>
+            <button type="button" data-filter="plan" data-value="regular" aria-pressed="false">Regular</button>
+            <button type="button" data-filter="plan" data-value="growth" aria-pressed="false">Growth</button>
+          </div></fieldset>
+          <fieldset><legend>Scheme category</legend>
+            <select id="category-filter" aria-label="Scheme category">
+              <option value="all">All categories</option>
+              <optgroup label="Equity"><option value="Large-Cap">Large-Cap</option><option value="Mid-Cap">Mid-Cap</option><option value="Small-Cap">Small-Cap</option><option value="Multi-Cap">Multi-Cap</option><option value="Flexi-Cap">Flexi-Cap</option><option value="Sectoral / Thematic">Sectoral / Thematic</option><option value="ELSS">ELSS</option></optgroup>
+              <optgroup label="Debt"><option value="Overnight">Overnight</option><option value="Liquid">Liquid</option><option value="Money Market">Money Market</option><option value="Short Duration">Short Duration</option><option value="Medium Duration">Medium Duration</option><option value="Long Duration">Long Duration</option><option value="Corporate Bond">Corporate Bond</option><option value="Gilt">Gilt</option></optgroup>
+              <optgroup label="Hybrid"><option value="Aggressive Hybrid">Aggressive Hybrid</option><option value="Conservative Hybrid">Conservative Hybrid</option><option value="Balanced Advantage / Dynamic Asset Allocation">Balanced Advantage / Dynamic Asset Allocation</option><option value="Arbitrage">Arbitrage</option><option value="Multi-Asset Allocation">Multi-Asset Allocation</option></optgroup>
+              <optgroup label="Other"><option value="Life-Cycle">Life-Cycle</option><option value="Index Fund / ETF">Index Fund / ETF</option><option value="Fund of Funds">Fund of Funds</option></optgroup>
+            </select>
+          </fieldset>
+        </div>
+      </section>
+
+      <div class="results-head"><p id="count">Preparing fund list…</p><p id="status" aria-live="polite"></p></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Scheme name</th><th>Code</th><th>Classification</th></tr></thead>
+        <tbody id="fund-list"></tbody>
+      </table><div id="empty" class="empty" hidden>No matching funds found.</div></div>
+      <button id="load-more" class="load-more" type="button" hidden>Show more</button>
+      <button id="retry" class="retry" type="button" hidden>Try again</button>
+      <dialog id="nav-panel" class="nav-panel" aria-live="polite">
+        <div class="nav-top"><div><h2 id="nav-title" class="nav-title">NAV history</h2><p id="nav-meta" class="nav-meta"></p></div><button id="close-nav" class="close" type="button">Close</button></div>
+        <div id="nav-content"></div>
+      </dialog>
+    </main>
+    <script>
+      const API_URL = 'https://api.mfapi.in/mf';
+      const state = { funds: [], search: '', style: 'all', plan: 'all', category: 'all', visible: 100 };
+      const list = document.querySelector('#fund-list');
+      const count = document.querySelector('#count');
+      const status = document.querySelector('#status');
+      const empty = document.querySelector('#empty');
+      const loadMore = document.querySelector('#load-more');
+      const retry = document.querySelector('#retry');
+      const navPanel = document.querySelector('#nav-panel');
+      const navTitle = document.querySelector('#nav-title');
+      const navMeta = document.querySelector('#nav-meta');
+      const navContent = document.querySelector('#nav-content');
+      let navPeriods = [];
+
+      // MF API provides scheme names, rather than formal category fields. These labels are intentionally derived from common name terms.
+      function classify(name) {
+        const text = name.toLowerCase();
+        const passive = /\b(index|etf|exchange traded|fof.*index|fund of funds.*index)\b/.test(text);
+        let category = 'Unclassified';
+        if (/\belss\b|tax saver/.test(text)) category = 'ELSS';
+        else if (/large.?cap/.test(text)) category = 'Large-Cap';
+        else if (/mid.?cap/.test(text)) category = 'Mid-Cap';
+        else if (/small.?cap/.test(text)) category = 'Small-Cap';
+        else if (/multi.?cap/.test(text)) category = 'Multi-Cap';
+        else if (/flexi.?cap/.test(text)) category = 'Flexi-Cap';
+        else if (/sector|thematic|banking|financial services|pharma|healthcare|technology|digital|infrastructure|consumption|manufacturing|energy|psu/.test(text)) category = 'Sectoral / Thematic';
+        else if (/overnight/.test(text)) category = 'Overnight';
+        else if (/liquid/.test(text)) category = 'Liquid';
+        else if (/money market/.test(text)) category = 'Money Market';
+        else if (/short duration|short term/.test(text)) category = 'Short Duration';
+        else if (/medium duration|medium term/.test(text)) category = 'Medium Duration';
+        else if (/long duration|long term/.test(text)) category = 'Long Duration';
+        else if (/corporate bond/.test(text)) category = 'Corporate Bond';
+        else if (/\bgilt\b|government securit/.test(text)) category = 'Gilt';
+        else if (/aggressive hybrid/.test(text)) category = 'Aggressive Hybrid';
+        else if (/conservative hybrid/.test(text)) category = 'Conservative Hybrid';
+        else if (/balanced advantage|dynamic asset allocation/.test(text)) category = 'Balanced Advantage / Dynamic Asset Allocation';
+        else if (/arbitrage/.test(text)) category = 'Arbitrage';
+        else if (/multi.?asset/.test(text)) category = 'Multi-Asset Allocation';
+        else if (/life.?cycle|target maturity|retirement/.test(text)) category = 'Life-Cycle';
+        else if (/index|\betf\b|exchange traded/.test(text)) category = 'Index Fund / ETF';
+        else if (/fund of funds|\bfof\b/.test(text)) category = 'Fund of Funds';
+        return {
+          style: passive ? 'passive' : 'active',
+          plan: /\bregular\b/.test(text) ? 'regular' : null,
+          growth: /\bgrowth\b/.test(text) ? 'growth' : null,
+          category
+        };
+      }
+      function matchesFilters(fund) {
+        const query = state.search.toLowerCase();
+        const c = fund.classification;
+        return (!query || fund.schemeName.toLowerCase().includes(query) || String(fund.schemeCode).includes(query))
+          && (state.style === 'all' || c.style === state.style)
+          && (state.plan === 'all' || c.plan === state.plan || (state.plan === 'growth' && c.growth))
+          && (state.category === 'all' || c.category === state.category);
+      }
+      function render() {
+        const filteredFunds = state.funds.filter(matchesFilters);
+        const shown = filteredFunds.slice(0, state.visible);
+        count.textContent = `${filteredFunds.length.toLocaleString()} fund${filteredFunds.length === 1 ? '' : 's'} found`;
+        list.innerHTML = shown.map(fund => {
+          const c = fund.classification;
+          const tags = [`<span class="tag matched">${c.category}</span>`, `<span class="tag matched">${c.style}</span>`, c.plan && `<span class="tag matched">regular</span>`, c.growth && `<span class="tag matched">growth</span>`].filter(Boolean).join('');
+          return `<tr><td><button class="scheme-button" type="button" data-scheme-code="${fund.schemeCode}">${escapeHtml(fund.schemeName)}</button></td><td class="code">${fund.schemeCode}</td><td><div class="tags">${tags}</div></td></tr>`;
+        }).join('');
+        empty.hidden = filteredFunds.length > 0;
+        loadMore.hidden = filteredFunds.length <= state.visible;
+      }
+      function escapeHtml(value) { const d = document.createElement('div'); d.textContent = value; return d.innerHTML; }
+      document.querySelector('#search').addEventListener('input', event => { state.search = event.target.value.trim(); state.visible = 100; render(); });
+      document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => {
+        state[button.dataset.filter] = button.dataset.value;
+        state.visible = 100;
+        document.querySelectorAll(`[data-filter="${button.dataset.filter}"]`).forEach(b => b.setAttribute('aria-pressed', b === button));
+        render();
+      }));
+      document.querySelector('#category-filter').addEventListener('change', event => { state.category = event.target.value; state.visible = 100; render(); });
+      loadMore.addEventListener('click', () => { state.visible += 100; render(); });
+      document.querySelector('#close-nav').addEventListener('click', () => navPanel.close());
+      list.addEventListener('click', event => {
+        const button = event.target.closest('[data-scheme-code]');
+        if (button) loadNavHistory(button.dataset.schemeCode, button.textContent);
+      });
+
+      function parseNavDate(value) {
+        const [day, month, year] = value.split('-').map(Number);
+        return new Date(year, month - 1, day);
+      }
+      function formatNav(value) { return `₹${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`; }
+      function addMonths(date, months) {
+        const day = date.getDate();
+        const copy = new Date(date.getFullYear(), date.getMonth() - months, 1);
+        const daysInMonth = new Date(copy.getFullYear(), copy.getMonth() + 1, 0).getDate();
+        copy.setDate(Math.min(day, daysInMonth));
+        return copy;
+      }
+      function addYears(date, years) {
+        const day = date.getDate();
+        const copy = new Date(date.getFullYear() - years, date.getMonth(), 1);
+        const daysInMonth = new Date(copy.getFullYear(), copy.getMonth() + 1, 0).getDate();
+        copy.setDate(Math.min(day, daysInMonth));
+        return copy;
+      }
+      function periodStats(history, latest, label, startDate, annualize = false) {
+        const periodData = history.filter(point => point.date >= startDate && point.date <= latest.date);
+        const start = history.find(point => point.date <= startDate) || history[history.length - 1];
+        const average = periodData.reduce((sum, point) => sum + point.nav, 0) / periodData.length;
+        const rawReturn = latest.nav / start.nav - 1;
+        const years = (latest.date - start.date) / (365.25 * 24 * 60 * 60 * 1000);
+        const returnValue = annualize && years > 0 ? Math.pow(latest.nav / start.nav, 1 / years) - 1 : rawReturn;
+        return { label, average, returnValue, annualize };
+      }
+      function benchmarkSuggestion(category) {
+        if (category === 'Large-Cap') return 'Nifty 50 TRI';
+        if (category === 'Mid-Cap') return 'Nifty Midcap 150 TRI';
+        if (category === 'Small-Cap') return 'Nifty Smallcap 250 TRI';
+        return 'Nifty 500 TRI';
+      }
+      function calculateAlpha() {
+        const period = navPeriods.find(item => item.label === document.querySelector('#alpha-period').value);
+        const benchmarkField = document.querySelector('#benchmark-return');
+        const betaField = document.querySelector('#fund-beta');
+        const riskFreeField = document.querySelector('#risk-free-rate');
+        const benchmarkReturn = Number(benchmarkField.value) / 100;
+        const beta = Number(betaField.value);
+        const riskFreeRate = Number(riskFreeField.value) / 100;
+        const result = document.querySelector('#alpha-result');
+        if (!period || !benchmarkField.value || !betaField.value || !riskFreeField.value || !Number.isFinite(benchmarkReturn) || !Number.isFinite(beta) || !Number.isFinite(riskFreeRate)) {
+          result.textContent = 'Enter valid benchmark TRI return, beta, and risk-free rate.';
+          return;
+        }
+        const alpha = period.returnValue - (riskFreeRate + beta * (benchmarkReturn - riskFreeRate));
+        result.textContent = `Alpha: ${(alpha * 100).toFixed(2)}% — fund return ${(period.returnValue * 100).toFixed(2)}%, required return ${((riskFreeRate + beta * (benchmarkReturn - riskFreeRate)) * 100).toFixed(2)}%.`;
+      }
+      navContent.addEventListener('click', event => { if (event.target.id === 'calculate-alpha') calculateAlpha(); });
+      async function loadNavHistory(code, name) {
+        if (!navPanel.open) navPanel.showModal();
+        navTitle.textContent = name;
+        navMeta.textContent = `Scheme code: ${code}`;
+        navContent.innerHTML = '<p id="status">Loading NAV history…</p>';
+        try {
+          const response = await fetch(`${API_URL}/${code}`, { mode: 'cors', cache: 'no-cache' });
+          if (!response.ok) throw new Error(`The API responded with HTTP ${response.status}`);
+          const payload = await response.json();
+          const history = payload.data.map(point => ({ date: parseNavDate(point.date), nav: Number(point.nav) })).filter(point => Number.isFinite(point.nav)).sort((a, b) => b.date - a.date);
+          if (!history.length) throw new Error('No NAV history was returned for this scheme');
+          const latest = history[0];
+          const periods = [
+            periodStats(history, latest, '1M', addMonths(latest.date, 1)),
+            periodStats(history, latest, '3M', addMonths(latest.date, 3)),
+            periodStats(history, latest, '6M', addMonths(latest.date, 6)),
+            periodStats(history, latest, '1Y', addYears(latest.date, 1)),
+            periodStats(history, latest, '3Y', addYears(latest.date, 3), true),
+            periodStats(history, latest, '5Y', addYears(latest.date, 5), true)
+          ];
+          navPeriods = periods.filter(period => ['1Y', '3Y', '5Y'].includes(period.label));
+          const fund = state.funds.find(item => String(item.schemeCode) === String(code));
+          const benchmark = benchmarkSuggestion(fund?.classification.category);
+          navContent.innerHTML = `<div class="latest"><span>Latest NAV · ${latest.date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span><strong>${formatNav(latest.nav)}</strong></div><div class="table-wrap"><table><thead><tr><th>Period</th><th>Average NAV</th><th>Return</th></tr></thead><tbody>${periods.map(period => `<tr><td>${period.label}</td><td>${formatNav(period.average)}</td><td>${(period.returnValue * 100).toFixed(2)}%${period.annualize ? ' p.a.' : ''}</td></tr>`).join('')}</tbody></table></div><p class="nav-note">Average NAV is the arithmetic mean of available daily NAVs in each period. 3Y and 5Y returns are annualized; shorter periods show total return.</p><section class="alpha-card" aria-labelledby="alpha-heading"><h3 id="alpha-heading">Alpha calculator</h3><p class="nav-note">Suggested benchmark: ${benchmark}. Enter its matching annualized TRI return, your beta, and the RBI T-bill yield for the same period.</p><div class="alpha-grid"><label>Fund-return period<select id="alpha-period">${navPeriods.map(period => `<option value="${period.label}">${period.label}</option>`).join('')}</select></label><label>Benchmark TRI return (%)<input id="benchmark-return" type="number" step="0.01" placeholder="e.g. 18.00" /></label><label>Fund beta<input id="fund-beta" type="number" step="0.01" placeholder="e.g. 0.95" /></label><label>RBI T-bill yield (%)<input id="risk-free-rate" type="number" step="0.01" placeholder="e.g. 6.50" /></label></div><button id="calculate-alpha" type="button" class="load-more">Calculate alpha</button><p id="alpha-result" class="alpha-result"></p></section>`;
+        } catch (error) {
+          navContent.innerHTML = `<p class="empty">Unable to load NAV history: ${escapeHtml(error.message)}</p>`;
+        }
+      }
+      async function loadFunds() {
+        retry.hidden = true;
+        count.textContent = 'Loading funds…';
+        status.textContent = 'Downloading the complete scheme list (about 5.5 MB)…';
+        try {
+          const response = await fetch(API_URL, { mode: 'cors', cache: 'no-cache' });
+          if (!response.ok) throw new Error(`The API responded with HTTP ${response.status}`);
+          const data = await response.json();
+          if (!Array.isArray(data)) throw new Error('The API returned an unexpected response');
+          state.funds = data.map(fund => ({ ...fund, classification: classify(fund.schemeName) }));
+          status.textContent = 'Updated from MF API';
+          render();
+        } catch (error) {
+          count.textContent = 'Unable to load funds';
+          status.textContent = `${error.message}. Check your connection, then try again.`;
+          retry.hidden = false;
+        }
+      }
+      retry.addEventListener('click', loadFunds);
+      loadFunds();
+    </script>
+  </body>
+</html>
